@@ -690,5 +690,53 @@
 })();
 </script>
 
+<script>
+/* ----- visit ping: get a notification when the page is actually opened ----- */
+(function () {
+  // 1) CHANGE this to your own hard-to-guess topic. Anyone who knows this
+  //    string can read your pings, so keep it private.
+  var TOPIC = 'doka-fu-9f3k2q7w';
+
+  // fire at most once per browser session
+  try { if (sessionStorage.getItem('doka_ping')) return; } catch (e) {}
+
+  var done = false;
+  function ping() {
+    if (done) return;
+    done = true;
+    try { sessionStorage.setItem('doka_ping', '1'); } catch (e) {}
+    var when = new Date().toLocaleString('de-AT');
+    var from = document.referrer || 'direkt geoeffnet';
+    var msg = 'Jemand hat das Doka Follow-up geoeffnet. Zeit: ' + when + ' . Kam von: ' + from;
+    try { fetch('https://ntfy.sh/' + TOPIC, { method: 'POST', body: msg }).catch(function () {}); } catch (e) {}
+  }
+
+  // Only count it as a real visit when the tab is visible AND either a few
+  // seconds pass or the person interacts. This filters out most link-scanner
+  // bots (mail security, chat link previews) that load the page hidden and
+  // never move the mouse.
+  function arm() {
+    var timer = setTimeout(ping, 3500);
+    ['mousemove', 'touchstart', 'scroll', 'keydown', 'click'].forEach(function (ev) {
+      window.addEventListener(ev, function once() {
+        clearTimeout(timer);
+        ping();
+      }, { passive: true, once: true });
+    });
+  }
+
+  if (document.visibilityState === 'visible') {
+    arm();
+  } else {
+    document.addEventListener('visibilitychange', function vc() {
+      if (document.visibilityState === 'visible') {
+        document.removeEventListener('visibilitychange', vc);
+        arm();
+      }
+    });
+  }
+})();
+</script>
+
 </body>
 </html>
